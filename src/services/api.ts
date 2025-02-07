@@ -5,7 +5,18 @@ import type { UserResponse } from '../types/user';
 import { retry } from '../utils/retry';
 import { throttle } from '../utils/debounce';
 import { errorHandler } from '../utils/errorHandler';
-import type { RetryOptions } from './types';
+
+// 删除 @vueuse/core 的导入，改用自定义的 RetryOptions 接口
+interface RetryOptions {
+  maxAttempts?: number;
+  delay?: number;
+  onRetry?: (error: Error) => boolean | void;
+}
+
+// 扩展 RetryOptions 接口
+interface CustomRetryOptions extends RetryOptions {
+  onRetry?: (error: Error) => void
+}
 
 // 统一 ApiError 声明
 export class ApiError extends Error {
@@ -31,7 +42,7 @@ class ChatApiService {
   }
 
   private async request<T>(url: string, options: RequestInit & {
-    retry?: RetryOptions,
+    retry?: CustomRetryOptions,
     params?: Record<string, string>
   } = {}): Promise<T> {
     const { params, retry, ...fetchOptions } = options;
@@ -48,30 +59,36 @@ class ChatApiService {
   }
 
   async getModels(type: string, subType: string) {
+    const retryOptions: CustomRetryOptions = {
+      maxAttempts: 3,
+      delay: 1000,
+      onRetry: (error: Error) => {
+        console.error('Retry due to error:', error);
+        return ApiError.shouldRetry(error);
+      }
+    };
+
     return this.request(`${this.baseUrl}/models`, {
       method: 'GET',
       params: { type, sub_type: subType },
-      retry: {
-        retries: 3,
-        delay: 1000,
-        onRetry: (error: Error) => {
-          return ApiError.shouldRetry(error);
-        }
-      }
+      retry: retryOptions
     });
   }
 
   async createCompletion(data: any) {
+    const retryOptions: RetryOptions = {
+      maxAttempts: 3,
+      delay: 1000,
+      onRetry: (error: Error) => {
+        console.error('Retry due to error:', error);
+        return ApiError.shouldRetry(error);
+      }
+    };
+
     return this.request(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       body: JSON.stringify(data),
-      retry: {
-        retries: 3,
-        delay: 1000,
-        onRetry: (error: Error) => {
-          return ApiError.shouldRetry(error);
-        }
-      }
+      retry: retryOptions
     });
   }
 }
@@ -79,6 +96,15 @@ class ChatApiService {
 // 修改重试选项类型
 export const chatApi = {
   async createCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
+    const retryOptions: RetryOptions = {
+      maxAttempts: 3,
+      delay: 1000,
+      onRetry: (error: Error) => {
+        console.error('Retry due to error:', error);
+        return ApiError.shouldRetry(error);
+      }
+    };
+
     return retry(async () => {
       const apiKey = storage.getApiKey();
       const apiUrl = storage.getApiUrl();
@@ -96,16 +122,19 @@ export const chatApi = {
       });
 
       return response.json();
-    }, {
-      maxAttempts: 3,
-      delay: 1000,
-      onRetry: (error: Error) => {
-        return ApiError.shouldRetry(error);
-      }
-    });
+    }, retryOptions);
   },
 
   getModels: throttle(async (type?: ModelType, subType?: ModelSubType): Promise<ModelsResponse> => {
+    const retryOptions: RetryOptions = {
+      maxAttempts: 2,
+      delay: 500,
+      onRetry: (error: Error) => {
+        console.error('Retry due to error:', error);
+        return ApiError.shouldRetry(error);
+      }
+    };
+
     return retry(async () => {
       const apiKey = storage.getApiKey();
       const apiUrl = storage.getApiUrl();
@@ -128,13 +157,7 @@ export const chatApi = {
       const data = await response.json() as ModelsResponse;
       console.log('原始模型列表响应:', data);
       return data;
-    }, {
-      maxAttempts: 2,
-      delay: 500,
-      onRetry: (error: Error) => {
-        return ApiError.shouldRetry(error);
-      }
-    });
+    }, retryOptions);
   }, 5000),
 
   async getUserInfo(): Promise<UserResponse> {
