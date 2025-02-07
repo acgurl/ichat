@@ -8,9 +8,8 @@ export interface Model {
   owned_by: string;
 }
 
+// 修改为实际的 API 响应格式
 export interface ModelsResponse {
-  code: number;
-  message: string;
-  status: boolean;
+  object: string;
   data: Model[];
 }

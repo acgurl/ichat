@@ -1,0 +1,259 @@
+/* 全局字体设置 */
+* {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ChatWindow 样式统一 */
+.chat-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background-color: #f5f5f5;
+}
+
+.session-header {
+  padding: 1rem;
+  border-bottom: 1px solid #ddd;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.message {
+  max-width: 80%;
+  padding: 0.8rem;
+  margin: 0.5rem;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.user {
+  background: var(--message-user-bg);
+  color: white;
+  align-self: flex-end;
+}
+
+.assistant {
+  background: var(--message-assistant-bg);
+  border: 1px solid var(--border-color);
+  align-self: flex-start;
+}
+
+.input-container {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+}
+
+select {
+  width: 100%;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-family: monospace;
+}
+
+select:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.message-input {
+  display: flex;
+  gap: 1rem;
+}
+
+textarea {
+  flex: 1;
+  min-height: 80px;
+  resize: vertical;
+  padding: 0.8rem;
+}
+
+.error-message {
+  color: var(--error-color);
+  margin-top: 0.5rem;
+}
+
+/* PC 大屏适配 */
+@media (min-width: 1024px) {
+  .chat-container {
+    max-width: none; /* 取消最大宽度，充满全屏 */
+    width: 100%;
+    padding: 2rem 4rem; /* 增加左右内边距 */
+  }
+  .messages,
+  .input-container {
+    width: 80%;      /* 固定内容区域宽度 */
+    margin: 1rem auto; /* 居中显示 */
+  }
+  /* 如有需要，可调低 .message 的 max-width */
+  .message {
+    max-width: 100%;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .chat-container {
+    padding: 0.5rem;
+  }
+  .message {
+    max-width: 90%;
+    padding: 0.6rem;
+  }
+  .message-input {
+    flex-direction: column;
+  }
+  button {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+/* 响应式设计优化 */
+/* 小型手机屏幕 */
+@media (max-width: 480px) {
+  .chat-container {
+    padding: 0.5rem;
+    height: calc(100vh - env(safe-area-inset-bottom));
+  }
+  .message {
+    max-width: 85%;
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+  .session-header {
+    padding: 0.5rem;
+  }
+  .input-container {
+    padding: 0.75rem;
+  }
+  textarea {
+    min-height: 60px;
+    font-size: 0.9rem;
+  }
+  .session-name {
+    font-size: 0.9rem;
+  }
+}
+
+/* 平板和小屏笔记本 */
+@media (min-width: 481px) and (max-width: 1023px) {
+  .chat-container {
+    padding: 1rem;
+  }
+  .messages,
+  .input-container {
+    width: 90%;
+    margin: 0.5rem auto;
+  }
+  .message {
+    max-width: 75%;
+  }
+}
+
+/* 桌面端优化 */
+@media (min-width: 1024px) {
+  .chat-container {
+    padding: 2rem;
+  }
+  .messages {
+    max-height: calc(100vh - 200px);
+    width: 75%;
+    margin: 1rem auto;
+  }
+  .input-container {
+    width: 75%;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+  }
+  .message-input {
+    gap: 1.5rem;
+  }
+  textarea {
+    min-height: 100px;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  select {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+  button {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+  }
+}
+
+/* 大屏幕优化 */
+@media (min-width: 1440px) {
+  .messages,
+  .input-container {
+    width: 65%;
+  }
+  .chat-container {
+    padding: 2rem 6rem;
+  }
+  .message {
+    max-width: 70%;
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+}
+
+/* 超大屏幕优化 */
+@media (min-width: 1920px) {
+  .messages,
+  .input-container {
+    width: 55%;
+  }
+  .message {
+    max-width: 65%;
+  }
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+  .chat-container {
+    background-color: #1a1a1a;
+  }
+  .messages,
+  .input-container,
+  .session-header {
+    background: #2d2d2d;
+    border-color: #3d3d3d;
+  }
+  .message.assistant {
+    background: #383838;
+    border-color: #484848;
+  }
+  textarea,
+  select,
+  .session-name {
+    background: #242424;
+    color: #e0e0e0;
+    border-color: #3d3d3d;
+  }
+}
+
+/* 安全区适配 */
+@supports (padding: max(0px)) {
+  .chat-container {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
