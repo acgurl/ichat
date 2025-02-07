@@ -21,7 +21,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/chat',
     name: 'chat',
     component: () => import('../views/ChatView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: '对话 - iChat'
     } as RouteMeta
