@@ -11,10 +11,11 @@
       <select v-model="selectedModel" :disabled="isLoading || isLoadingModels">
         <option v-if="isLoadingModels" value="">加载模型列表中...</option>
         <option v-else-if="models.length === 0" value="">未找到可用模型</option>
+        <option v-else-if="error" value="">加载失败，请刷新重试</option>
         <option v-for="model in models"
                 :key="model.id"
                 :value="model.id">
-          {{ model.id }}
+          {{ formatModelName(model.id) }}
         </option>
       </select>
       <div class="message-input">
@@ -99,6 +100,10 @@ async function sendMessage() {
   } finally {
     isLoading.value = false;
   }
+}
+
+function formatModelName(modelId: string): string {
+  return modelId.split('/').pop() || modelId;
 }
 </script>
 

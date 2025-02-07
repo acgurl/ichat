@@ -23,8 +23,16 @@
           <span>{{ userInfo.name }}</span>
         </div>
         <div class="info-item">
-          <span class="label">余额：</span>
+          <span class="label">当前余额：</span>
           <span>{{ userInfo.balance }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">充值余额：</span>
+          <span>{{ userInfo.chargeBalance }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">总余额：</span>
+          <span>{{ userInfo.totalBalance }}</span>
         </div>
         <div class="info-item">
           <span class="label">状态：</span>
@@ -90,6 +98,12 @@ async function saveSettings() {
 
     storage.setApiUrl(apiUrl.value.trim())
     storage.setApiKey(apiKey.value.trim())
+
+    // 保存配置后刷新用户信息
+    const response = await chatApi.getUserInfo();
+    if (response.status) {
+      userInfo.value = response.data;
+    }
 
     success.value = '配置已保存'
     setTimeout(() => {

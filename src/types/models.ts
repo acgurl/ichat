@@ -9,6 +9,8 @@ export interface Model {
 }
 
 export interface ModelsResponse {
+  code: number;
+  message: string;
+  status: boolean;
   data: Model[];
-  object: string;
 }

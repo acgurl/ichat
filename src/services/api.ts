@@ -21,7 +21,7 @@ export const chatApi = {
 
     try {
       let baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      const url = `${baseUrl}/chat/completions`;
+      const url = `${baseUrl}/v1/chat/completions`; // 添加 v1 前缀
 
       const requestBody = {
         messages: request.messages,
