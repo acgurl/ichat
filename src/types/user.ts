@@ -1,20 +1,16 @@
 export interface UserInfo {
-  id: string;
   name: string;
-  email: string;
-  image: string;
-  introduction: string;
-  role: string;
-  status: string;
-  isAdmin: boolean;
-  balance: string;
-  chargeBalance: string;
-  totalBalance: string;
+  balance: number;
+  chargeBalance: number;
+  totalBalance: number;
+  status: 'active' | 'inactive';
+  created: number;
+  lastLogin?: number;
 }
 
 export interface UserResponse {
-  code: number;
   status: boolean;
-  message: string;
+  code: number;
+  message?: string;
   data: UserInfo;
 }

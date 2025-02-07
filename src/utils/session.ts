@@ -1,44 +1,66 @@
 import type { ChatMessage } from '../types/chat';
 
-interface ChatSession {
+export interface ChatSession {
   id: string;
   name: string;
-  messages: ChatMessage[];
   model: string;
+  messages: ChatMessage[];
+  created: number;
   lastUpdated: number;
 }
 
-const SESSION_KEY = 'chat_sessions';
+const SESSION_STORAGE_KEY = 'chat_sessions';
 
-export const sessionManager = {
-  getSessions(): ChatSession[] {
-    const sessions = localStorage.getItem(SESSION_KEY);
-    return sessions ? JSON.parse(sessions) : [];
-  },
+class SessionManager {
+  private sessions: Map<string, ChatSession>;
 
-  saveSession(session: ChatSession) {
-    const sessions = this.getSessions();
-    const index = sessions.findIndex(s => s.id === session.id);
-    if (index >= 0) {
-      sessions[index] = session;
-    } else {
-      sessions.push(session);
+  constructor() {
+    this.sessions = new Map();
+    this.loadSessions();
+  }
+
+  private loadSessions() {
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (saved) {
+      const sessions = JSON.parse(saved);
+      Object.entries(sessions).forEach(([id, session]) => {
+        this.sessions.set(id, session as ChatSession);
+      });
     }
-    localStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
-  },
+  }
 
-  deleteSession(sessionId: string) {
-    const sessions = this.getSessions().filter(s => s.id !== sessionId);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
-  },
+  private saveSessions() {
+    const sessions = Object.fromEntries(this.sessions.entries());
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+  }
 
   createSession(model: string): ChatSession {
-    return {
+    const session: ChatSession = {
       id: Date.now().toString(),
-      name: `对话 ${new Date().toLocaleString()}`,
-      messages: [],
+      name: '新对话',
       model,
+      messages: [],
+      created: Date.now(),
       lastUpdated: Date.now()
     };
+    this.sessions.set(session.id, session);
+    this.saveSessions();
+    return session;
   }
-};
+
+  getSessions(): ChatSession[] {
+    return Array.from(this.sessions.values());
+  }
+
+  saveSession(session: ChatSession) {
+    this.sessions.set(session.id, session);
+    this.saveSessions();
+  }
+
+  deleteSession(sessionId: string) {
+    this.sessions.delete(sessionId);
+    this.saveSessions();
+  }
+}
+
+export const sessionManager = new SessionManager();
