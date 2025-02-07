@@ -30,13 +30,33 @@ export class ApiError extends Error {
 }
 
 // 添加统一的请求头处理函数
-const getHeaders = (additionalHeaders: Record<string, string> = {}) => {
+const getHeaders = (additionalHeaders?: HeadersInit): Record<string, string> => {
   const apiKey = storage.getApiKey();
-  return {
+  const baseHeaders: Record<string, string> = {
     'Authorization': `Bearer ${apiKey}`,
-    'Accept': 'application/json',
-    ...additionalHeaders
+    'Accept': 'application/json'
   };
+
+  if (!additionalHeaders) {
+    return baseHeaders;
+  }
+
+  // 转换 HeadersInit 为 Record<string, string>
+  const headers: Record<string, string> = { ...baseHeaders };
+
+  if (additionalHeaders instanceof Headers) {
+    additionalHeaders.forEach((value, key) => {
+      headers[key] = value;
+    });
+  } else if (Array.isArray(additionalHeaders)) {
+    additionalHeaders.forEach(([key, value]) => {
+      headers[key] = value;
+    });
+  } else {
+    Object.assign(headers, additionalHeaders);
+  }
+
+  return headers;
 };
 
 // 添加响应日志处理函数
