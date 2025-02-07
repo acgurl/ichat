@@ -13,6 +13,14 @@ export class ApiError extends Error {
     super(message);
     this.name = 'ApiError';
   }
+
+  static isApiError(error: unknown): error is ApiError {
+    return error instanceof ApiError;
+  }
+
+  static shouldRetry(error: unknown): boolean {
+    return ApiError.isApiError(error) && typeof error.status === 'number' && error.status >= 500;
+  }
 }
 
 class ChatApiService {
@@ -47,10 +55,7 @@ class ChatApiService {
         retries: 3,
         delay: 1000,
         onRetry: (error: Error) => {
-          if (error instanceof ApiError && error.status) {
-            return error.status >= 500;
-          }
-          return false;
+          return ApiError.shouldRetry(error);
         }
       }
     });
@@ -63,8 +68,8 @@ class ChatApiService {
       retry: {
         retries: 3,
         delay: 1000,
-        onRetry: (error: Error, attempt: number) => {
-          return error instanceof Error && (error as ApiError).status ? (error as ApiError).status >= 500 : false;
+        onRetry: (error: Error) => {
+          return ApiError.shouldRetry(error);
         }
       }
     });
@@ -95,10 +100,7 @@ export const chatApi = {
       maxAttempts: 3,
       delay: 1000,
       onRetry: (error: Error) => {
-        if (error instanceof ApiError && error.status) {
-          return error.status >= 500;
-        }
-        return false;
+        return ApiError.shouldRetry(error);
       }
     });
   },
@@ -129,7 +131,9 @@ export const chatApi = {
     }, {
       maxAttempts: 2,
       delay: 500,
-      shouldRetry: (error) => error instanceof ApiError && error.status >= 500
+      onRetry: (error: Error) => {
+        return ApiError.shouldRetry(error);
+      }
     });
   }, 5000),
 

@@ -1,8 +1,8 @@
 export interface RetryOptions {
   retries?: number;
   delay?: number;
-  onRetry?: (error: Error, attempt: number) => boolean | void;
   maxAttempts?: number;
+  onRetry?: (error: Error, attempt: number) => boolean | void;
 }
 
 export interface ApiResponse<T = any> {
