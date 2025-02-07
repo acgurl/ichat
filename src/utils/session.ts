@@ -15,9 +15,11 @@ const SESSION_STORAGE_KEY = 'chat_sessions';
 
 class SessionManager {
   private sessions: Map<string, ChatSession>;
+  private listeners: Set<() => void>;
 
   constructor() {
     this.sessions = new Map();
+    this.listeners = new Set();
     this.loadSessions();
   }
 
@@ -31,9 +33,15 @@ class SessionManager {
     }
   }
 
+  private notifyListeners() {
+    // 立即通知监听器
+    this.listeners.forEach(listener => listener());
+  }
+
   private saveSessions() {
     const sessions = Object.fromEntries(this.sessions.entries());
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+    this.notifyListeners();
   }
 
   createSession(model: string): ChatSession {
@@ -43,10 +51,12 @@ class SessionManager {
       model,
       messages: [],
       created: Date.now(),
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
+      pinned: false
     };
     this.sessions.set(session.id, session);
     this.saveSessions();
+    this.notifyListeners(); // 确保通知
     return session;
   }
 
@@ -64,8 +74,10 @@ class SessionManager {
   }
 
   deleteSession(sessionId: string) {
-    this.sessions.delete(sessionId);
-    this.saveSessions();
+    if (this.sessions.delete(sessionId)) {
+      this.saveSessions();
+      this.notifyListeners(); // 确保通知
+    }
   }
 
   renameSession(id: string, newName: string) {
@@ -81,7 +93,9 @@ class SessionManager {
     const session = this.sessions.get(id);
     if (session) {
       session.pinned = !session.pinned;
+      session.lastUpdated = Date.now(); // 更新时间戳以触发排序
       this.saveSessions();
+      this.notifyListeners(); // 确保通知
     }
   }
 
@@ -93,6 +107,18 @@ class SessionManager {
       // 然后按最后更新时间排序
       return b.lastUpdated - a.lastUpdated;
     });
+  }
+
+  clearAllSessions(): void {
+    this.sessions.clear();
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    this.notifyListeners(); // 确保通知
+  }
+
+  // 添加监听器方法
+  addListener(listener: () => void) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 }
 

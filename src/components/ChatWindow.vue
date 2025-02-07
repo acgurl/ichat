@@ -171,9 +171,14 @@ const switchSession = (sessionId: string) => {
   const session = sessionManager.getSession(sessionId);
   if (session) {
     currentSessionId.value = sessionId;
-    emit('update:session', session);
+    emit('update:session', {...session}); // 创建新的对象引用以确保更新
   }
 };
+
+// 监听会话ID变化
+watch(() => props.session.id, (newId) => {
+  currentSessionId.value = newId;
+});
 
 function formatModelName(modelId: string): string {
   const parts = modelId.split('/');
@@ -241,6 +246,7 @@ const loadModelList = async () => {
   border: 1px solid transparent;
   border-radius: 4px;
   font-size: 1.1rem;
+  color: var(--text-primary);
 }
 
 .session-name:hover {
@@ -258,16 +264,20 @@ const loadModelList = async () => {
   padding: 0.8rem;
   border-radius: 8px;
   max-width: 80%;
+  color: var(--text-primary);
+  line-height: 1.5;
 }
 
 .message.user {
   background-color: var(--primary-color-light);
   margin-left: auto;
+  color: var(--text-primary);
 }
 
 .message.assistant {
-  background-color: #f5f5f5;
+  background-color: var(--background-secondary);
   margin-right: auto;
+  color: var(--text-primary);
 }
 
 .input-container {
@@ -289,6 +299,8 @@ textarea {
   border-radius: 4px;
   resize: vertical;
   min-height: 80px;
+  color: var(--text-primary);
+  font-size: 1rem;
 }
 
 select {
@@ -296,6 +308,9 @@ select {
   padding: 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  background-color: var(--background-primary);
 }
 
 button {

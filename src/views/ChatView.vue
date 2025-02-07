@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import ChatWindow from '../components/ChatWindow.vue';
 import { sessionManager } from '../utils/session';
 import type { ChatSession } from '../utils/session';
@@ -17,10 +17,24 @@ onMounted(() => {
   }
 });
 
-function updateSession(session: ChatSession) {
+// 修改会话更新方法
+const updateSession = (session: ChatSession) => {
   sessionManager.saveSession(session);
-  currentSession.value = session;
-}
+  // 强制更新当前会话的引用以触发响应式更新
+  currentSession.value = {...session};
+};
+
+// 添加监听会话列表变化
+watch(() => sessionManager.getSortedSessions(), (sessions) => {
+  if (!currentSession.value || !sessionManager.getSession(currentSession.value.id)) {
+    // 如果当前会话不存在，选择新的会话
+    if (sessions.length > 0) {
+      currentSession.value = sessions[0];
+    } else {
+      currentSession.value = sessionManager.createSession('Qwen/Qwen2.5-72B-Instruct');
+    }
+  }
+}, { deep: true });
 </script>
 
 <template>

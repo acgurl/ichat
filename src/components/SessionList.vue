@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { sessionManager } from '../utils/session';
 import type { ChatSession } from '../utils/session';
 
-defineProps({
+const props = defineProps({
   currentSessionId: {
     type: String,
     default: ''
@@ -16,10 +16,24 @@ const emit = defineEmits<{
 
 const editingId = ref('');
 const editingName = ref('');
-const sessions = computed(() => sessionManager.getSortedSessions());
+const sessions = ref<ChatSession[]>([]);
+
+// 更新会话列表
+const updateSessions = () => {
+  sessions.value = sessionManager.getSortedSessions();
+};
+
+// 组件挂载时添加监听器
+onMounted(() => {
+  updateSessions(); // 初始加载
+  const unsubscribe = sessionManager.addListener(updateSessions);
+  // 组件卸载时移除监听器
+  onUnmounted(unsubscribe);
+});
 
 function createNewSession() {
   const session = sessionManager.createSession('Qwen/Qwen2.5-72B-Instruct');
+  updateSessions(); // 强制更新列表
   emit('select', session.id);
 }
 
@@ -39,22 +53,34 @@ function saveSessionName(sessionId: string) {
   editingId.value = '';
 }
 
-function deleteSession(sessionId: string) {
+// 修改删除会话的处理
+const deleteSession = async (sessionId: string) => {
   if (confirm('确定要删除这个会话吗？')) {
     sessionManager.deleteSession(sessionId);
+    updateSessions(); // 强制更新列表
+
     if (sessionId === props.currentSessionId) {
-      const sessions = sessionManager.getSortedSessions();
-      if (sessions.length > 0) {
-        emit('select', sessions[0].id);
+      const remainingSessions = sessions.value;
+      if (remainingSessions.length > 0) {
+        emit('select', remainingSessions[0].id);
       } else {
         createNewSession();
       }
     }
   }
-}
+};
+
+const deleteAllSessions = () => {
+  if (confirm('确定要删除所有会话吗？此操作不可恢复！')) {
+    sessionManager.clearAllSessions();
+    updateSessions(); // 强制更新列表
+    createNewSession();
+  }
+};
 
 function togglePin(sessionId: string) {
   sessionManager.togglePinSession(sessionId);
+  updateSessions(); // 强制更新列表
 }
 
 function formatDate(timestamp: number): string {
@@ -66,16 +92,31 @@ function formatDate(timestamp: number): string {
   <div class="session-list">
     <div class="session-list-header">
       <h2>对话列表</h2>
-      <button @click="createNewSession" class="new-session-btn">
-        新建会话
-      </button>
+      <div class="header-buttons">
+        <button @click="deleteAllSessions" class="danger-btn" title="删除所有会话">
+          清空
+        </button>
+        <button @click="createNewSession" class="new-session-btn">
+          新建
+        </button>
+      </div>
     </div>
     <div class="sessions">
       <div v-for="session in sessions"
            :key="session.id"
-           :class="['session-item', { active: currentSessionId === session.id }]"
+           :class="[
+             'session-item',
+             {
+               'active': currentSessionId === session.id,
+               'pinned': session.pinned
+             }
+           ]"
            @click="selectSession(session.id)">
         <div class="session-item-content">
+          <!-- 添加置顶标识 -->
+          <div class="session-labels">
+            <span v-if="session.pinned" class="pin-label">📌</span>
+          </div>
           <input v-if="editingId === session.id"
                  v-model="editingName"
                  @blur="saveSessionName(session.id)"
@@ -129,19 +170,41 @@ function formatDate(timestamp: number): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: var(--text-primary);
 }
 
 .session-item:hover {
-  background: #f5f5f5;
+  background-color: var(--background-secondary);
 }
 
 .session-item.active {
-  background: var(--primary-color-light);
+  background-color: var(--primary-color-light);
+  border-left: 4px solid var(--primary-color);
+  font-weight: 500;
+}
+
+.session-item.pinned {
+  background-color: var(--background-secondary);
+}
+
+.session-item.pinned.active {
+  background-color: var(--primary-color-light);
 }
 
 .session-item-content {
   flex: 1;
   min-width: 0;
+}
+
+.session-labels {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.pin-label {
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 .session-name {
@@ -150,11 +213,12 @@ function formatDate(timestamp: number): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
 .session-date {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .session-name-input {
@@ -174,6 +238,15 @@ function formatDate(timestamp: number): string {
   opacity: 1;
 }
 
+.session-actions button {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.session-actions button:hover {
+  opacity: 1;
+}
+
 .new-session-btn {
   padding: 0.5rem 1rem;
   background: var(--primary-color);
@@ -181,5 +254,28 @@ function formatDate(timestamp: number): string {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.danger-btn {
+  padding: 0.5rem 1rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.danger-btn:hover {
+  background: #c82333;
+}
+
+h2 {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 </style>

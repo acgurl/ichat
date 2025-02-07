@@ -1,5 +1,24 @@
 @import './base.css';
 
+:root {
+  --text-primary: #2c3e50;
+  --text-secondary: #4a5568;
+  --border-color: #e2e8f0;
+  --primary-color: #3b82f6;
+  --primary-color-light: #dbeafe;
+  --background-primary: #ffffff;
+  --background-secondary: #f8fafc;
+  --primary-hover: #2563eb;
+  --primary-active: #1d4ed8;
+  --highlight-bg: rgba(59, 130, 246, 0.1);
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--background-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
 #app {
   max-width: 1280px;
   margin: 0 auto;
