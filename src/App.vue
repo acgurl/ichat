@@ -1,85 +1,85 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+  <div class="app-container">
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+<style>
+:root {
+  --primary-color: #2c3e50;
+  --secondary-color: #42b983;
+  --background-color: #f8f9fa;
+  --text-color: #2c3e50;
+  --border-color: #e9ecef;
+  --message-user-bg: #42b983;
+  --message-assistant-bg: #ffffff;
+  --error-color: #dc3545;
+  --success-color: #28a745;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-size: 16px;
+  color: var(--text-color);
+  background-color: var(--background-color);
 }
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100vh;
   padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
 }
 
-nav a:first-of-type {
-  border: 0;
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+
+  .app-container {
+    padding: 0 0.5rem;
+  }
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+button {
+  cursor: pointer;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  background: var(--secondary-color);
+  color: white;
+  transition: opacity 0.2s;
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+input, textarea, select {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  color: var(--text-color);
+}
 
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
+}
 
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
