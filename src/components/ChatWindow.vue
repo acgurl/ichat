@@ -209,22 +209,6 @@ function sortModels(models: Model[]): Model[] {
     return a.id.localeCompare(b.id);
   });
 }
-
-const loadModelList = async () => {
-  try {
-    const response = await getModelList()
-    console.log('获取到的模型列表响应:', response)
-    const modelList = response.data.map(model => ({
-      value: model.id,
-      label: model.name
-    }))
-    console.log('处理后的模型列表:', modelList)
-    return modelList
-  } catch (error) {
-    console.log(' 加载模型列表失败:', error)
-    return []
-  }
-}
 </script>
 
 <style scoped>

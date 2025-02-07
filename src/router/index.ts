@@ -1,21 +1,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw, RouteLocationNormalized } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import storage from '../utils/storage'
 
-interface RouteMeta {
+// 修改元数据类型定义
+type RouteMeta = {
   requiresAuth?: boolean;
   title?: string;
+  [key: string | symbol]: unknown;
 }
 
-// 使用 type 注解
-const routes: Array<RouteRecordRaw> = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'home',
     component: () => import('../views/HomeView.vue'),
     meta: {
-      title: '首页 - iChat'
-    }
+      title: '首页'
+    } satisfies RouteMeta
   },
   {
     path: '/chat',
@@ -24,7 +25,7 @@ const routes: Array<RouteRecordRaw> = [
     meta: {
       requiresAuth: true,
       title: '对话 - iChat'
-    } as RouteMeta
+    } satisfies RouteMeta
   },
   {
     path: '/settings',
@@ -32,7 +33,7 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/SettingsView.vue'),
     meta: {
       title: '设置 - iChat'
-    }
+    } satisfies RouteMeta
   }
 ]
 
