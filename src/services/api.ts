@@ -29,6 +29,21 @@ export class ApiError extends Error {
   }
 }
 
+// 添加统一的请求头处理函数
+const getHeaders = (additionalHeaders: Record<string, string> = {}) => {
+  const apiKey = storage.getApiKey();
+  return {
+    'Authorization': `Bearer ${apiKey}`,
+    'Accept': 'application/json',
+    ...additionalHeaders
+  };
+};
+
+// 添加响应日志处理函数
+const logResponse = (url: string, method: string, data: any) => {
+  console.log(`[API Response] ${method} ${url}:`, data);
+};
+
 class ChatApiService {
   private baseUrl: string;
 
@@ -40,17 +55,23 @@ class ChatApiService {
     retry?: RetryOptions,  // 修改为 RetryOptions
     params?: Record<string, string>
   } = {}): Promise<T> {
-    const { params, retry, ...fetchOptions } = options;
+    const { params, retry, headers, ...fetchOptions } = options;
     const urlWithParams = params
       ? `${url}?${new URLSearchParams(params)}`
       : url;
 
-    const response = await fetch(urlWithParams, fetchOptions);
+    const response = await fetch(urlWithParams, {
+      ...fetchOptions,
+      headers: getHeaders(headers)
+    });
+
     if (!response.ok) {
       throw new ApiError(response.statusText, response.status);
     }
 
-    return response.json();
+    const data = await response.json();
+    logResponse(urlWithParams, fetchOptions.method || 'GET', data);
+    return data;
   }
 
   async getModels(type: string, subType: string) {
@@ -108,15 +129,13 @@ export const chatApi = {
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'Accept': 'application/json'
-        },
+        headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(request)
       });
 
-      return response.json();
+      const data = await response.json();
+      logResponse(url, 'POST', data);
+      return data;
     }, retryOptions);
   },
 
@@ -144,12 +163,11 @@ export const chatApi = {
 
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
+        headers: getHeaders()
       });
 
       const data = await response.json() as ModelsResponse;
+      logResponse(url.toString(), 'GET', data);
       console.log('原始模型列表响应:', data);
       return data;
     }, retryOptions);
@@ -163,12 +181,11 @@ export const chatApi = {
 
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
+      headers: getHeaders()
     });
 
     const data = await response.json();
+    logResponse(url, 'GET', data);
     return data;
   }
 };
