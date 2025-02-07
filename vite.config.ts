@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    base: '/', // 确保使用正确的基础路径
     plugins: [
       vue(),
       vueJsx(),
@@ -31,6 +32,11 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       open: true,
       cors: true
+    },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false
     }
   }
 })
