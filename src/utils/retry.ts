@@ -1,27 +1,31 @@
-interface RetryOptions {
-  maxAttempts?: number;
-  delay?: number;
-}
+import type { RetryOptions } from '../services/api';
 
-export async function retry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
-  const {
-    maxAttempts = 3,
-    delay = 1000
-  } = options;
+export async function retry<T>(fn: () => Promise<T>, options: RetryOptions): Promise<T> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const delay = options.delay ?? 1000;
+
+  let lastError: Error = new Error('Initial error');
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
       if (attempt === maxAttempts) {
-        throw error;
+        break;
       }
-      console.log(`请求失败，${attempt}/${maxAttempts} 次重试中...`);
-      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+
+      if (options.onRetry) {
+        const shouldRetry = options.onRetry(lastError);
+        if (shouldRetry === false) {
+          break;
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  throw new Error("重试失败");
+
+  throw lastError;
 }

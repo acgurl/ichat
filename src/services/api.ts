@@ -6,16 +6,11 @@ import { retry } from '../utils/retry';
 import { throttle } from '../utils/debounce';
 import { errorHandler } from '../utils/errorHandler';
 
-// 删除 @vueuse/core 的导入，改用自定义的 RetryOptions 接口
-interface RetryOptions {
+// 导出重试选项接口
+export interface RetryOptions {
   maxAttempts?: number;
   delay?: number;
   onRetry?: (error: Error) => boolean | void;
-}
-
-// 扩展 RetryOptions 接口
-interface CustomRetryOptions extends RetryOptions {
-  onRetry?: (error: Error) => void
 }
 
 // 统一 ApiError 声明
@@ -42,7 +37,7 @@ class ChatApiService {
   }
 
   private async request<T>(url: string, options: RequestInit & {
-    retry?: CustomRetryOptions,
+    retry?: RetryOptions,  // 修改为 RetryOptions
     params?: Record<string, string>
   } = {}): Promise<T> {
     const { params, retry, ...fetchOptions } = options;
@@ -59,7 +54,7 @@ class ChatApiService {
   }
 
   async getModels(type: string, subType: string) {
-    const retryOptions: CustomRetryOptions = {
+    const retryOptions: RetryOptions = {
       maxAttempts: 3,
       delay: 1000,
       onRetry: (error: Error) => {
