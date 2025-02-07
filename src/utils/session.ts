@@ -7,6 +7,8 @@ export interface ChatSession {
   messages: ChatMessage[];
   created: number;
   lastUpdated: number;
+  icon?: string;  // 新增：会话图标
+  pinned?: boolean;  // 新增：置顶状态
 }
 
 const SESSION_STORAGE_KEY = 'chat_sessions';
@@ -52,6 +54,10 @@ class SessionManager {
     return Array.from(this.sessions.values());
   }
 
+  getSession(id: string): ChatSession | undefined {
+    return this.sessions.get(id);
+  }
+
   saveSession(session: ChatSession) {
     this.sessions.set(session.id, session);
     this.saveSessions();
@@ -60,6 +66,33 @@ class SessionManager {
   deleteSession(sessionId: string) {
     this.sessions.delete(sessionId);
     this.saveSessions();
+  }
+
+  renameSession(id: string, newName: string) {
+    const session = this.sessions.get(id);
+    if (session) {
+      session.name = newName;
+      session.lastUpdated = Date.now();
+      this.saveSessions();
+    }
+  }
+
+  togglePinSession(id: string) {
+    const session = this.sessions.get(id);
+    if (session) {
+      session.pinned = !session.pinned;
+      this.saveSessions();
+    }
+  }
+
+  getSortedSessions(): ChatSession[] {
+    return Array.from(this.sessions.values()).sort((a, b) => {
+      // 优先按置顶状态排序
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      // 然后按最后更新时间排序
+      return b.lastUpdated - a.lastUpdated;
+    });
   }
 }
 

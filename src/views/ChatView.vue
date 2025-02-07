@@ -1,22 +1,43 @@
 <script setup lang="ts">
-import ChatWindow from '../components/ChatWindow.vue'
+import { ref, onMounted } from 'vue';
+import ChatWindow from '../components/ChatWindow.vue';
+import { sessionManager } from '../utils/session';
+import type { ChatSession } from '../utils/session';
+
+const currentSession = ref<ChatSession | null>(null);
+
+onMounted(() => {
+  const sessions = sessionManager.getSortedSessions();
+  if (sessions.length > 0) {
+    currentSession.value = sessions[0];
+  } else {
+    // 如果没有会话，创建一个新会话
+    const newSession = sessionManager.createSession('Qwen/Qwen2.5-72B-Instruct');
+    currentSession.value = newSession;
+  }
+});
+
+function updateSession(session: ChatSession) {
+  sessionManager.saveSession(session);
+  currentSession.value = session;
+}
 </script>
 
 <template>
   <div class="chat-view">
-    <header>
-      <router-link to="/" class="back-btn">返回</router-link>
-      <h2>对话</h2>
-    </header>
-    <ChatWindow />
+    <ChatWindow
+      v-if="currentSession"
+      :session="currentSession"
+      @update:session="updateSession"
+    />
   </div>
 </template>
 
 <style scoped>
 .chat-view {
-  height: 100vh;
   display: flex;
-  flex-direction: column;
+  height: 100vh;
+  width: 100%;
 }
 
 header {

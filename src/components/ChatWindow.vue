@@ -1,35 +1,39 @@
 <template>
   <div class="chat-container">
-    <!-- Add session management UI -->
-    <div class="session-header">
-      <input v-model="currentSession.name"
-             @change="sessionManager.saveSession(currentSession)"
-             class="session-name" />
-    </div>
-    <div class="messages" ref="messagesRef">
-      <div v-for="(message, index) in messages" :key="index"
-           :class="['message', message.role]">
-        {{ message.content }}
+    <SessionList
+      :currentSessionId="currentSessionId"
+      @select="switchSession"
+    />
+    <div class="chat-main">
+      <div class="session-header">
+        <input v-model="session.name"
+               @change="$emit('update:session', session)"
+               class="session-name" />
       </div>
-    </div>
-
-    <div class="input-container">
-      <select v-model="selectedModel" :disabled="isLoading || isLoadingModels">
-        <option v-if="isLoadingModels" value="">加载模型列表中...</option>
-        <option v-for="model in models"
-                :key="model.id"
-                :value="model.id">
-          {{ formatModelName(model.id) }}
-        </option>
-      </select>
-      <div class="message-input">
-        <textarea v-model="userInput"
-                  @keyup.enter.ctrl="sendMessage"
-                  :disabled="isLoading"
-                  placeholder="输入消息，Ctrl+Enter发送"></textarea>
-        <button @click="sendMessage" :disabled="isLoading">
-          {{ isLoading ? '发送中...' : '发送' }}
-        </button>
+      <div class="messages" ref="messagesRef">
+        <div v-for="(message, index) in messages" :key="index"
+             :class="['message', message.role]">
+          {{ message.content }}
+        </div>
+      </div>
+      <div class="input-container">
+        <select v-model="selectedModel" :disabled="isLoading || isLoadingModels">
+          <option v-if="isLoadingModels" value="">加载模型列表中...</option>
+          <option v-for="model in models"
+                  :key="model.id"
+                  :value="model.id">
+            {{ formatModelName(model.id) }}
+          </option>
+        </select>
+        <div class="message-input">
+          <textarea v-model="userInput"
+                    @keyup.enter.ctrl="sendMessage"
+                    :disabled="isLoading"
+                    placeholder="输入消息，Ctrl+Enter发送"></textarea>
+          <button @click="sendMessage" :disabled="isLoading">
+            {{ isLoading ? '发送中...' : '发送' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -37,23 +41,40 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from 'vue';
+import SessionList from './SessionList.vue';  // 添加组件导入
 import { chatApi } from '../services/api';
 import type { ChatMessage } from '../types/chat';
 import type { Model } from '../types/models';
+import type { ChatSession } from '../utils/session';
 import { sessionManager } from '../utils/session';
 import { debounce } from '../utils/debounce';
 import { errorHandler } from '../utils/errorHandler';
 
+const props = defineProps<{
+  session: ChatSession;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:session', session: ChatSession): void;
+}>();
+
 const messages = ref<ChatMessage[]>([]);
 const userInput = ref('');
-const selectedModel = ref('Qwen/Qwen2.5-72B-Instruct');
+const selectedModel = ref(props.session.model);
 const messagesRef = ref<HTMLElement | null>(null);
 const isLoading = ref(false);
 const error = ref('');
 const models = ref<Model[]>([]);
 const isLoadingModels = ref(false);
 
-const currentSession = ref(sessionManager.createSession(selectedModel.value));
+// 移除 currentSession，改用 props.session
+const currentSessionId = ref(props.session.id);
+
+// 监听 props.session 的变化
+watch(() => props.session, (newSession) => {
+  messages.value = newSession.messages;
+  selectedModel.value = newSession.model;
+}, { immediate: true });
 
 watch(messages, () => {
   nextTick(() => {
@@ -85,7 +106,6 @@ onMounted(async () => {
           m.id === 'deepseek-ai/DeepSeek-V3'
         );
         selectedModel.value = defaultModel ? defaultModel.id : models.value[0].id;
-        currentSession.value = sessionManager.createSession(selectedModel.value);
       }
     } else {
       console.error('模型列表格式不正确:', response);
@@ -123,10 +143,13 @@ const debouncedSendMessage = debounce(async () => {
 
     messages.value.push(response.choices[0].message);
 
-    // 保存会话
-    currentSession.value.messages = messages.value;
-    currentSession.value.lastUpdated = Date.now();
-    sessionManager.saveSession(currentSession.value);
+    // 更新会话
+    const updatedSession = {
+      ...props.session,
+      messages: messages.value,
+      lastUpdated: Date.now()
+    };
+    emit('update:session', updatedSession);
   } catch (err) {
     errorHandler.handleError(err instanceof Error ? err : new Error('Unknown error'));
     error.value = err instanceof Error ? err.message : '发送消息失败';
@@ -141,6 +164,15 @@ const debouncedSendMessage = debounce(async () => {
 const sendMessage = () => {
   if (!userInput.value.trim() || isLoading.value) return;
   debouncedSendMessage();
+};
+
+const switchSession = (sessionId: string) => {
+  if (!sessionId) return;
+  const session = sessionManager.getSession(sessionId);
+  if (session) {
+    currentSessionId.value = sessionId;
+    emit('update:session', session);
+  }
 };
 
 function formatModelName(modelId: string): string {
@@ -172,4 +204,119 @@ function sortModels(models: Model[]): Model[] {
     return a.id.localeCompare(b.id);
   });
 }
+
+const loadModelList = async () => {
+  try {
+    const response = await getModelList()
+    console.log('获取到的模型列表响应:', response)
+    const modelList = response.data.map(model => ({
+      value: model.id,
+      label: model.name
+    }))
+    console.log('处理后的模型列表:', modelList)
+    return modelList
+  } catch (error) {
+    console.log(' 加载模型列表失败:', error)
+    return []
+  }
+}
 </script>
+
+<style scoped>
+.chat-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #fff;
+}
+
+.session-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.session-name {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 1.1rem;
+}
+
+.session-name:hover {
+  border-color: var(--border-color);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.message {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  border-radius: 8px;
+  max-width: 80%;
+}
+
+.message.user {
+  background-color: var(--primary-color-light);
+  margin-left: auto;
+}
+
+.message.assistant {
+  background-color: #f5f5f5;
+  margin-right: auto;
+}
+
+.input-container {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+  background: white;
+}
+
+.message-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+textarea {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* 主聊天区域容器 */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+</style>
