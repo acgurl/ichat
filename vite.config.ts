@@ -38,18 +38,29 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       sourcemap: false,
       minify: 'terser',
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 1500,
       rollupOptions: {
         output: {
           manualChunks: (id) => {
+            // Vue 相关库打包到一起
+            if (id.includes('node_modules/vue') ||
+                id.includes('node_modules/vue-router') ||
+                id.includes('node_modules/pinia')) {
+              return 'vue-vendor'
+            }
+            // highlight.js 相关打包到一起
+            if (id.includes('node_modules/highlight.js')) {
+              return 'highlight'
+            }
+            // 其他第三方库打包到一起
             if (id.includes('node_modules')) {
-              return 'vendor';
+              return 'dependencies'
             }
           },
-          // 避免 chunk 文件名冲突
-          entryFileNames: `assets/[name]-[hash].js`,
-          chunkFileNames: `assets/[name]-[hash].js`,
-          assetFileNames: `assets/[name]-[hash].[ext]`
+          // 确保生成的文件名不会冲突
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]'
         }
       }
     }

@@ -67,3 +67,22 @@ export interface ChatCompletionResponse {
     total_tokens: number;
   };
 }
+
+export interface StreamDelta {
+  role?: string;
+  content?: string;
+}
+
+export interface StreamChoice {
+  index: number;
+  delta: StreamDelta;
+  finish_reason: string | null;
+}
+
+export interface StreamResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: StreamChoice[];
+}

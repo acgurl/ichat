@@ -37,13 +37,20 @@ export class ApiError extends Error {
 // 添加统一的请求头处理函数
 const getHeaders = (additionalHeaders?: HeadersInit): Record<string, string> => {
   const apiKey = storage.getApiKey();
-  return {
+  const headers = {
     'Authorization': `Bearer ${apiKey}`,
-    'Accept': 'text/event-stream', // 修改 Accept 为 text/event-stream
-    'Cache-Control': 'no-cache', // 添加 Cache-Control
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
+    'Cache-Control': 'no-cache',
     'X-Client-Version': import.meta.env.VITE_APP_VERSION || '1.0.0',
     'X-Request-ID': crypto.randomUUID()
   };
+
+  if (additionalHeaders) {
+    Object.assign(headers, additionalHeaders);
+  }
+
+  return headers;
 };
 
 // 添加响应日志处理函数
@@ -130,18 +137,36 @@ export const chatApi = {
     const url = `${baseUrl}/v1/chat/completions`;
 
     try {
-      const requestBody = JSON.stringify(request);
-      console.log('Request Body:', requestBody);
+      // 按照文档要求整理请求体
+      const requestBody = {
+        messages: request.messages,
+        model: request.model,
+        temperature: request.temperature ?? 0.7,
+        stream: true,
+        max_tokens: request.max_tokens ?? 512,
+        top_p: request.top_p ?? 0.7,
+        top_k: request.top_k ?? 50,
+        frequency_penalty: request.frequency_penalty ?? 0,
+        presence_penalty: request.presence_penalty ?? 0,
+        stop: null,
+        user: request.user,
+        response_format: {
+          type: "text"
+        },
+        tools: []
+      };
+
+      console.log('Request Body:', JSON.stringify(requestBody));
 
       const response = await fetch(url, {
         method: 'POST',
-        headers: getHeaders({ 'Content-Type': 'application/json' }),
-        body: requestBody
+        headers: getHeaders(),
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API Error Data:', errorData); // 打印错误信息
+        console.error('API Error Data:', errorData);
         throw new ApiError(response.statusText, response.status, errorData);
       }
 
@@ -160,34 +185,33 @@ export const chatApi = {
           break;
         }
 
-        const chunk = decoder.decode(value);
+        const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n');
 
         for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const data = line.substring(5).trim();
-
+          if (line.trim() === '') continue;
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
             if (data === '[DONE]') {
               break;
             }
 
             try {
               const json = JSON.parse(data);
-              if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+              if (json.choices?.[0]?.delta?.content) {
                 const content = json.choices[0].delta.content;
                 accumulatedResponse += content;
                 onData(accumulatedResponse);
               }
             } catch (e) {
-              console.error('Failed to parse JSON:', e);
-              onError(e);
-              return;
+              console.error('Failed to parse SSE message:', e);
+              console.log('Raw SSE message:', data);
             }
           }
         }
       }
     } catch (error) {
-      console.error('API Request Error:', error); // 打印请求错误
+      console.error('API Request Error:', error);
       onError(error);
     }
   },

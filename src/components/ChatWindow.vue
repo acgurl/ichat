@@ -131,16 +131,24 @@ const debouncedSendMessage = debounce(async () => {
   if (!userInput.value.trim() || isLoading.value) return;
   error.value = '';
 
+  // 过滤掉重复的 assistant 消息，只保留最新的对话记录
+  const filteredMessages = messages.value.filter((msg, index, arr) => {
+    if (msg.role === 'assistant') {
+      return index === arr.findIndex(m => m.role === 'assistant' && m.content === msg.content);
+    }
+    return true;
+  });
+
   const userMessage: ChatMessage = {
     role: 'user',
     content: userInput.value.trim()
   };
 
-  messages.value.push(userMessage);
+  messages.value = [...filteredMessages, userMessage];
   const currentInput = userInput.value;
   userInput.value = '';
   isLoading.value = true;
-  aiResponse.value = ''; // 清空 aiResponse
+  aiResponse.value = '';
 
   try {
     await chatApi.createCompletion(
@@ -150,7 +158,7 @@ const debouncedSendMessage = debounce(async () => {
         temperature: 0.7,
         stream: true,
         max_tokens: 512,
-        stop: [], // 修改为 []
+        stop: null, // 修改为 null
         top_p: 0.7,
         top_k: 50,
         frequency_penalty: 0.5,
@@ -158,10 +166,9 @@ const debouncedSendMessage = debounce(async () => {
         response_format: {
           type: "text"
         },
-        tools: null // 修改为 null
+        tools: [] // 修改为空数组
       },
       (data) => {
-        // 逐字接收数据
         aiResponse.value = data;
         nextTick(() => {
           if (messagesRef.value) {
@@ -170,22 +177,19 @@ const debouncedSendMessage = debounce(async () => {
         });
       },
       (err) => {
-        // 错误处理
         error.value = errorHandler(err instanceof Error ? err : new Error('Unknown error'));
         userInput.value = currentInput;
-        messages.value.pop(); // 移除失败的消息
+        messages.value.pop();
         isLoading.value = false;
       }
     );
 
-    // 完成后添加消息
     const aiMessage: ChatMessage = {
       role: 'assistant',
       content: aiResponse.value
     };
-    messages.value.push(aiMessage);
+    messages.value = [...messages.value, aiMessage];
 
-    // 更新会话
     const updatedSession = {
       ...props.session,
       messages: messages.value,
