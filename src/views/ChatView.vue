@@ -66,4 +66,133 @@ header {
   text-decoration: none;
   color: #666;
 }
+
+/* 修改聊天容器的样式 */
+.chat-container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--background-primary);
+  /* 添加多列布局 */
+  flex-direction: row;
+}
+
+/* 修改会话列表的样式 */
+.session-list {
+  width: 300px;
+  border-right: 1px solid var(--border-color);
+  padding: 1rem;
+}
+
+.session-header {
+  padding: 1.5rem; /* 增大内边距 */
+  border-bottom: 1px solid var(--border-color);
+}
+
+.session-name {
+  width: 100%;
+  padding: 0.75rem; /* 增大内边距 */
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 1.2rem; /* 增大字体 */
+  color: var(--text-primary);
+}
+
+.session-name:hover {
+  border-color: var(--border-color);
+}
+
+/* 修改消息列表的样式 */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem; /* 增大内边距 */
+}
+
+/* 修改消息的样式 */
+.message {
+  margin-bottom: 1.5rem; /* 增大间距 */
+  padding: 1rem; /* 增大内边距 */
+  border-radius: 8px;
+  max-width: 80%;
+  font-size: 1.1rem; /* 增大字体 */
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* 修改用户消息的样式 */
+.message.user {
+  background-color: var(--primary-color-light);
+  margin-left: auto;
+  color: var(--text-primary);
+}
+
+/* 修改助手消息的样式 */
+.message.assistant {
+  background-color: var(--background-secondary);
+  margin-right: auto;
+  color: var(--text-primary);
+}
+
+/* 修改输入容器的样式 */
+.input-container {
+  padding: 1.5rem; /* 增大内边距 */
+  border-top: 1px solid var(--border-color);
+  background: var(--background-primary);
+}
+
+/* 修改消息输入区域的样式 */
+.message-input {
+  display: flex;
+  gap: 1rem; /* 增大间距 */
+  margin-top: 1rem;
+}
+
+/* 修改文本框的样式 */
+textarea {
+  flex: 1;
+  padding: 0.75rem; /* 增大内边距 */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 100px; /* 增大高度 */
+  font-size: 1.1rem; /* 增大字体 */
+  color: var(--text-primary);
+}
+
+/* 修改选择框的样式 */
+select {
+  width: 200px; /* 增大宽度 */
+  padding: 0.75rem; /* 增大内边距 */
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1.1rem; /* 增大字体 */
+  color: var(--text-primary);
+  background-color: var(--background-primary);
+}
+
+/* 修改按钮的样式 */
+button {
+  padding: 0.75rem 1.5rem; /* 增大按钮大小 */
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.1rem; /* 增大字体 */
+}
+
+/* 修改禁用按钮的样式 */
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* 修改聊天主区域的样式 */
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 </style>

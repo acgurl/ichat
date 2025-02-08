@@ -1,5 +1,6 @@
 const API_KEY_STORAGE_KEY = 'chat_api_key';
 const API_URL_STORAGE_KEY = 'chat_api_url';
+const HIGHLIGHT_STYLE_STORAGE_KEY = 'highlight_style';
 
 const storage = {
   getApiKey: () => {
@@ -24,6 +25,14 @@ const storage = {
 
   removeApiUrl: () => {
     localStorage.removeItem(API_URL_STORAGE_KEY);
+  },
+
+  getHighlightStyle: () => {
+    return localStorage.getItem(HIGHLIGHT_STYLE_STORAGE_KEY) || 'github-dark';
+  },
+
+  setHighlightStyle: (style: string) => {
+    localStorage.setItem(HIGHLIGHT_STYLE_STORAGE_KEY, style);
   }
 };
 

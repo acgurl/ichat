@@ -1,35 +1,31 @@
-import { ApiError } from '../services/api';
+import { ApiError } from '../services/api'
 
 export class ErrorHandler {
-  private static instance: ErrorHandler;
-  private errorListeners: ((error: Error) => void)[] = [];
-
-  static getInstance() {
-    if (!ErrorHandler.instance) {
-      ErrorHandler.instance = new ErrorHandler();
-    }
-    return ErrorHandler.instance;
-  }
-
-  handleError(error: Error) {
-    console.error('Error occurred:', error);
-
-    if (error instanceof ApiError) {
+  static handle(error: unknown): string {
+    if (ApiError.isApiError(error)) {
       switch (error.status) {
         case 401:
-          window.location.href = '/settings';
-          break;
+          return '认证失败，请检查 API Key'
+        case 403:
+          return '没有权限访问该资源'
+        case 404:
+          return '请求的资源不存在'
         case 429:
-          return '请求过于频繁，请稍后再试';
+          return '请求次数过多，请稍后再试'
         case 500:
-          return '服务器错误，请稍后重试';
+          return '服务器内部错误'
         default:
-          return error.message;
+          return error.message || '未知错误'
       }
     }
+    return error instanceof Error ? error.message : '未知错误'
+  }
 
-    return '发生未知错误，请刷新页面重试';
+  static setupGlobalHandling() {
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('未处理的 Promise 拒绝:', event.reason)
+    })
   }
 }
 
-export const errorHandler = ErrorHandler.getInstance();
+export const errorHandler = ErrorHandler.handle

@@ -16,6 +16,14 @@
         <input type="password" v-model="apiKey"
                placeholder="请输入API密钥" />
       </div>
+      <div class="form-group">
+        <label>代码高亮样式</label>
+        <select v-model="selectedHighlightStyle">
+          <option v-for="style in highlightStyles" :key="style" :value="style">
+            {{ style }}
+          </option>
+        </select>
+      </div>
       <div v-if="userInfo" class="user-info">
         <h3>账户信息</h3>
         <div class="info-item">
@@ -72,6 +80,18 @@ const isValid = computed(() => {
   return apiUrl.value.trim() && apiKey.value.trim()
 })
 
+// 添加代码高亮样式选择
+const highlightStyles = ref([
+  'github',
+  'github-dark',
+  'atom-one-dark',
+  'atom-one-light',
+  'vs',
+  'vs2015',
+  'xt256'
+]);
+const selectedHighlightStyle = ref(storage.getHighlightStyle() || 'github-dark');
+
 onMounted(async () => {
   if (storage.getApiKey() && storage.getApiUrl()) {
     try {
@@ -98,6 +118,7 @@ async function saveSettings() {
 
     storage.setApiUrl(apiUrl.value.trim())
     storage.setApiKey(apiKey.value.trim())
+    storage.setHighlightStyle(selectedHighlightStyle.value); // 保存高亮样式
 
     // 保存配置后刷新用户信息
     const response = await chatApi.getUserInfo();
@@ -119,9 +140,11 @@ async function saveSettings() {
 
 <style scoped>
 .settings {
-  padding: 1rem;
-  max-width: 600px;
+  padding: 2rem;
+  max-width: 1200px; /* 增大最大宽度 */
   margin: 0 auto;
+  display: flex; /* 使用 Flexbox 布局 */
+  flex-direction: column;
 }
 
 header {
@@ -147,6 +170,7 @@ h2 {
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  flex: 1; /* 占据剩余空间 */
 }
 
 .form-group {
@@ -207,6 +231,23 @@ input {
   color: var(--text-color);
   opacity: 0.7;
   min-width: 70px;
+}
+
+@media (min-width: 769px) {
+  .settings {
+    flex-direction: row; /* 横向排列 */
+    align-items: flex-start; /* 顶部对齐 */
+    gap: 2rem; /* 调整间距 */
+  }
+
+  .settings-form {
+    max-width: 600px; /* 限制表单宽度 */
+  }
+
+  .user-info {
+    flex: 1; /* 占据剩余空间 */
+    margin-top: 0; /* 移除上边距 */
+  }
 }
 
 @media (max-width: 768px) {

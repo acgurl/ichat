@@ -36,7 +36,22 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
-      sourcemap: false
+      sourcemap: false,
+      minify: 'terser',
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+          },
+          // 避免 chunk 文件名冲突
+          entryFileNames: `assets/[name]-[hash].js`,
+          chunkFileNames: `assets/[name]-[hash].js`,
+          assetFileNames: `assets/[name]-[hash].[ext]`
+        }
+      }
     }
   }
 })

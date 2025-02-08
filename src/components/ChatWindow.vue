@@ -13,7 +13,11 @@
       <div class="messages" ref="messagesRef">
         <div v-for="(message, index) in messages" :key="index"
              :class="['message', message.role]">
-          {{ message.content }}
+          <div class="message-content" v-html="highlightContent(message.content)">
+          </div>
+        </div>
+        <div v-if="isLoading" class="message assistant">
+          <div class="message-content" v-html="highlightContent(aiResponse)"></div>
         </div>
       </div>
       <div class="input-container">
@@ -43,12 +47,14 @@
 import { ref, watch, nextTick, onMounted } from 'vue';
 import SessionList from './SessionList.vue';  // 添加组件导入
 import { chatApi } from '../services/api';
-import type { ChatMessage } from '../types/chat';
+import type { ChatMessage, ChatCompletionResponse } from '../types/chat';
 import type { Model } from '../types/models';
 import type { ChatSession } from '../utils/session';
 import { sessionManager } from '../utils/session';
 import { debounce } from '../utils/debounce';
 import { errorHandler } from '../utils/errorHandler';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github-dark.css'; // 导入样式
 
 const props = defineProps<{
   session: ChatSession;
@@ -66,6 +72,7 @@ const isLoading = ref(false);
 const error = ref('');
 const models = ref<Model[]>([]);
 const isLoadingModels = ref(false);
+const aiResponse = ref(''); // 用于存储 AI 逐字返回的内容
 
 // 移除 currentSession，改用 props.session
 const currentSessionId = ref(props.session.id);
@@ -112,7 +119,7 @@ onMounted(async () => {
       error.value = '模型列表格式不正确';
     }
   } catch (err) {
-    error.value = '加载模型列表失败';
+    error.value = errorHandler(err instanceof Error ? err : new Error('Unknown error'));
     console.error('加载模型列表失败:', err);
   } finally {
     isLoadingModels.value = false;
@@ -133,15 +140,50 @@ const debouncedSendMessage = debounce(async () => {
   const currentInput = userInput.value;
   userInput.value = '';
   isLoading.value = true;
+  aiResponse.value = ''; // 清空 aiResponse
 
   try {
-    const response = await chatApi.createCompletion({
-      messages: messages.value,
-      model: selectedModel.value,
-      temperature: 0.7
-    });
+    await chatApi.createCompletion(
+      {
+        model: selectedModel.value,
+        messages: messages.value,
+        temperature: 0.7,
+        stream: true,
+        max_tokens: 512,
+        stop: [], // 修改为 []
+        top_p: 0.7,
+        top_k: 50,
+        frequency_penalty: 0.5,
+        n: 1,
+        response_format: {
+          type: "text"
+        },
+        tools: null // 修改为 null
+      },
+      (data) => {
+        // 逐字接收数据
+        aiResponse.value = data;
+        nextTick(() => {
+          if (messagesRef.value) {
+            messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+          }
+        });
+      },
+      (err) => {
+        // 错误处理
+        error.value = errorHandler(err instanceof Error ? err : new Error('Unknown error'));
+        userInput.value = currentInput;
+        messages.value.pop(); // 移除失败的消息
+        isLoading.value = false;
+      }
+    );
 
-    messages.value.push(response.choices[0].message);
+    // 完成后添加消息
+    const aiMessage: ChatMessage = {
+      role: 'assistant',
+      content: aiResponse.value
+    };
+    messages.value.push(aiMessage);
 
     // 更新会话
     const updatedSession = {
@@ -151,8 +193,7 @@ const debouncedSendMessage = debounce(async () => {
     };
     emit('update:session', updatedSession);
   } catch (err) {
-    errorHandler.handleError(err instanceof Error ? err : new Error('Unknown error'));
-    error.value = err instanceof Error ? err.message : '发送消息失败';
+    error.value = errorHandler(err instanceof Error ? err : new Error('Unknown error'));
     userInput.value = currentInput;
     messages.value.pop(); // 移除失败的消息
   } finally {
@@ -209,14 +250,38 @@ function sortModels(models: Model[]): Model[] {
     return a.id.localeCompare(b.id);
   });
 }
+
+// 添加代码高亮函数
+const highlightContent = (content: string): string => {
+  try {
+    // 使用正则表达式匹配代码块
+    const codeRegex = /```([a-zA-Z]+)?\n([\s\S]*?)\n```/g;
+    return content.replace(codeRegex, (match, language, code) => {
+      try {
+        // 尝试进行代码高亮
+        const highlightedCode = language
+          ? hljs.highlight(code, { language }).value
+          : hljs.highlightAuto(code).value;
+        return `<pre><code class="hljs ${language || 'plaintext'}">${highlightedCode}</code></pre>`;
+      } catch (error) {
+        // 如果高亮失败，则返回原始代码
+        console.error('代码高亮失败:', error);
+        return `<pre><code class="hljs plaintext">${code}</code></pre>`;
+      }
+    });
+  } catch (error) {
+    console.error('内容高亮失败:', error);
+    return content;
+  }
+};
 </script>
 
 <style scoped>
 .chat-container {
   display: flex;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--background-primary);
 }
 
 .session-header {
@@ -253,13 +318,13 @@ function sortModels(models: Model[]): Model[] {
 }
 
 .message.user {
-  background-color: var(--primary-color-light);
+  background-color: var(--message-user-bg);
   margin-left: auto;
   color: var(--text-primary);
 }
 
 .message.assistant {
-  background-color: var(--background-secondary);
+  background-color: var(--message-ai-bg);
   margin-right: auto;
   color: var(--text-primary);
 }

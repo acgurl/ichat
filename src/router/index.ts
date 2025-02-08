@@ -38,18 +38,30 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 
 router.beforeEach((to, from, next) => {
-  const requiresAuth = (to.meta as RouteMeta).requiresAuth
-  if (requiresAuth && (!storage.getApiKey() || !storage.getApiUrl())) {
-    next('/settings')
-  } else {
-    document.title = (to.meta.title as string) || 'iChat'
-    next()
+  // 添加路由错误处理
+  if (to.matched.length === 0) {
+    next({ name: 'home' })
+    return
   }
+
+  // 检查 API 配置
+  const apiKey = storage.getApiKey()
+  const apiUrl = storage.getApiUrl()
+
+  if (!apiKey || !apiUrl) {
+    if (to.name !== 'settings') {
+      next({ name: 'settings' })
+      return
+    }
+  }
+
+  document.title = (to.meta.title as string) || 'iChat'
+  next()
 })
 
 export default router

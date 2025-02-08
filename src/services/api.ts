@@ -15,7 +15,7 @@ export interface RetryOptions {
 
 // 统一 ApiError 声明
 export class ApiError extends Error {
-  constructor(message: string, public status?: number) {
+  constructor(message: string, public status?: number, public data?: any) {
     super(message);
     this.name = 'ApiError';
   }
@@ -25,38 +25,25 @@ export class ApiError extends Error {
   }
 
   static shouldRetry(error: unknown): boolean {
-    return ApiError.isApiError(error) && typeof error.status === 'number' && error.status >= 500;
+    if (!ApiError.isApiError(error)) return false;
+    // 添加更多重试条件
+    return (
+      typeof error.status === 'number' &&
+      (error.status >= 500 || error.status === 429)
+    );
   }
 }
 
 // 添加统一的请求头处理函数
 const getHeaders = (additionalHeaders?: HeadersInit): Record<string, string> => {
   const apiKey = storage.getApiKey();
-  const baseHeaders: Record<string, string> = {
+  return {
     'Authorization': `Bearer ${apiKey}`,
-    'Accept': 'application/json'
+    'Accept': 'text/event-stream', // 修改 Accept 为 text/event-stream
+    'Cache-Control': 'no-cache', // 添加 Cache-Control
+    'X-Client-Version': import.meta.env.VITE_APP_VERSION || '1.0.0',
+    'X-Request-ID': crypto.randomUUID()
   };
-
-  if (!additionalHeaders) {
-    return baseHeaders;
-  }
-
-  // 转换 HeadersInit 为 Record<string, string>
-  const headers: Record<string, string> = { ...baseHeaders };
-
-  if (additionalHeaders instanceof Headers) {
-    additionalHeaders.forEach((value, key) => {
-      headers[key] = value;
-    });
-  } else if (Array.isArray(additionalHeaders)) {
-    additionalHeaders.forEach(([key, value]) => {
-      headers[key] = value;
-    });
-  } else {
-    Object.assign(headers, additionalHeaders);
-  }
-
-  return headers;
 };
 
 // 添加响应日志处理函数
@@ -86,7 +73,8 @@ class ChatApiService {
     });
 
     if (!response.ok) {
-      throw new ApiError(response.statusText, response.status);
+      const errorData = await response.json();
+      throw new ApiError(response.statusText, response.status, errorData);
     }
 
     const data = await response.json();
@@ -131,32 +119,77 @@ class ChatApiService {
 
 // 修改重试选项类型
 export const chatApi = {
-  async createCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const retryOptions: RetryOptions = {
-      maxAttempts: 3,
-      delay: 1000,
-      onRetry: (error: Error) => {
-        console.error('Retry due to error:', error);
-        return ApiError.shouldRetry(error);
-      }
-    };
+  async createCompletion(
+    request: ChatCompletionRequest,
+    onData: (data: string) => void,
+    onError: (error: any) => void
+  ): Promise<void> {
+    const apiKey = storage.getApiKey();
+    const apiUrl = storage.getApiUrl();
+    let baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    const url = `${baseUrl}/v1/chat/completions`;
 
-    return retry(async () => {
-      const apiKey = storage.getApiKey();
-      const apiUrl = storage.getApiUrl();
-      let baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-      const url = `${baseUrl}/v1/chat/completions`;
+    try {
+      const requestBody = JSON.stringify(request);
+      console.log('Request Body:', requestBody);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(request)
+        body: requestBody
       });
 
-      const data = await response.json();
-      logResponse(url, 'POST', data);
-      return data;
-    }, retryOptions);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error Data:', errorData); // 打印错误信息
+        throw new ApiError(response.statusText, response.status, errorData);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = '';
+
+      if (!reader) {
+        throw new Error('Failed to get reader from response body');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const data = line.substring(5).trim();
+
+            if (data === '[DONE]') {
+              break;
+            }
+
+            try {
+              const json = JSON.parse(data);
+              if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+                const content = json.choices[0].delta.content;
+                accumulatedResponse += content;
+                onData(accumulatedResponse);
+              }
+            } catch (e) {
+              console.error('Failed to parse JSON:', e);
+              onError(e);
+              return;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('API Request Error:', error); // 打印请求错误
+      onError(error);
+    }
   },
 
   getModels: throttle(async (type?: ModelType, subType?: ModelSubType): Promise<ModelsResponse> => {
